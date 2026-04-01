@@ -5,7 +5,7 @@ import Automation from '@/lib/models/Automation';
 import Metric from '@/lib/models/Metric';
 import { KPICard } from '@/components/KPICard';
 import { MetricsChart } from '@/components/Charts';
-import { Mail, TrendingUp, DollarSign, Percent, ArrowLeft } from 'lucide-react';
+import { Mail, TrendingUp, DollarSign, Percent, ArrowLeft, Settings } from 'lucide-react';
 import { formatCurrency, formatNumber, formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -108,16 +108,30 @@ export default async function AutomationDetailPage({
               {automation.description}
             </p>
           </div>
-          <span
-            className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
-              automation.status === 'active'
-                ? 'bg-green-100 text-green-700'
-                : 'bg-gray-100 text-gray-700'
-            }`}
-          >
+          <div className="flex items-center gap-3">
+            <Link href={`/dashboard/automations/${id}/settings`}>
+              <Button variant="outline" size="sm">
+                <Settings className="mr-2 h-4 w-4" />
+                Paramètres
+              </Button>
+            </Link>
             <span
-              className={`mr-2 h-2 w-2 rounded-full ${
-                automation.status === 'active' ? 'bg-green-500' : 'bg-gray-500'
+              className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
+                automation.status === 'active'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              <span
+                className={`mr-2 h-2 w-2 rounded-full ${
+                  automation.status === 'active' ? 'bg-green-500' : 'bg-gray-500'
+                }`}
+              />
+              {automation.status === 'active' ? 'Actif' : 'Inactif'}
+            </span>
+          </div>
+        </div>
+      </div>
               }`}
             />
             {automation.status === 'active' ? 'Actif' : 'Inactif'}
