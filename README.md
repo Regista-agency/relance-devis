@@ -14,10 +14,41 @@ Application SaaS pour le suivi des automatisations métier développée avec Nex
 
 ## 📦 Installation
 
+### Option 1: Docker (Recommandé) 🐳
+
+**Démarrage rapide:**
+
+```bash
+# Méthode automatique
+./start-docker.sh
+
+# Ou avec Make
+make install
+
+# Ou manuellement
+docker-compose up -d --build
+docker-compose exec nextjs yarn seed
+```
+
+L'application sera accessible sur:
+- **App:** http://localhost:3000
+- **MongoDB Express:** http://localhost:8081
+
+📚 **Plus d'infos:** Voir [README.docker.md](./README.docker.md) et [QUICKSTART.md](./QUICKSTART.md)
+
+### Option 2: Installation locale
+
 Les dépendances sont déjà installées. Pour réinstaller :
 
 ```bash
 yarn install
+```
+
+Assurez-vous que MongoDB est installé et en cours d'exécution:
+
+```bash
+# Démarrer MongoDB (si installé localement)
+mongod --dbpath /path/to/data
 ```
 
 ## 🗄️ Base de données
