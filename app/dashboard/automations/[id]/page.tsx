@@ -1,8 +1,6 @@
 import { notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import dbConnect from '@/lib/db';
-import Automation from '@/lib/models/Automation';
-import Metric from '@/lib/models/Metric';
+import prisma from '@/lib/prisma';
 import { KPICard } from '@/components/KPICard';
 import { MetricsChart } from '@/components/Charts';
 import { Mail, TrendingUp, DollarSign, Percent, ArrowLeft, Settings } from 'lucide-react';
@@ -17,9 +15,10 @@ export default async function AutomationDetailPage({
 }) {
   const { id } = await params;
   const session = await auth();
-  await dbConnect();
 
-  const automation = await Automation.findById(id).lean();
+  const automation = await prisma.automation.findUnique({
+    where: { id },
+  });
 
   if (!automation) {
     notFound();
@@ -28,7 +27,7 @@ export default async function AutomationDetailPage({
   // Check authorization
   if (
     session?.user.role !== 'admin' &&
-    automation.clientId.toString() !== session?.user.clientId
+    automation.clientId !== session?.user.clientId
   ) {
     notFound();
   }
@@ -37,12 +36,13 @@ export default async function AutomationDetailPage({
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const metrics = await Metric.find({
-    automationId: automation._id,
-    date: { $gte: sevenDaysAgo },
-  })
-    .sort({ date: 1 })
-    .lean();
+  const metrics = await prisma.metric.findMany({
+    where: {
+      automationId: automation.id,
+      date: { gte: sevenDaysAgo },
+    },
+    orderBy: { date: 'asc' },
+  });
 
   // Calculate totals
   const totalEmailsSent = metrics.reduce((sum, m) => sum + m.emailsSent, 0);
@@ -130,12 +130,6 @@ export default async function AutomationDetailPage({
               {automation.status === 'active' ? 'Actif' : 'Inactif'}
             </span>
           </div>
-        </div>
-      </div>
-              }`}
-            />
-            {automation.status === 'active' ? 'Actif' : 'Inactif'}
-          </span>
         </div>
       </div>
 

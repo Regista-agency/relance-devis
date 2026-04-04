@@ -1,7 +1,6 @@
 import { auth } from '@/lib/auth';
 import { redirect, notFound } from 'next/navigation';
-import dbConnect from '@/lib/db';
-import Automation from '@/lib/models/Automation';
+import prisma from '@/lib/prisma';
 import { AutomationSettingsClient } from '@/components/AutomationSettingsClient';
 
 export default async function AutomationSettingsPage({
@@ -16,9 +15,9 @@ export default async function AutomationSettingsPage({
     redirect('/login');
   }
 
-  await dbConnect();
-
-  const automation = await Automation.findById(id).lean();
+  const automation = await prisma.automation.findUnique({
+    where: { id },
+  });
 
   if (!automation) {
     notFound();
@@ -27,13 +26,13 @@ export default async function AutomationSettingsPage({
   // Check authorization
   if (
     session.user.role !== 'admin' &&
-    automation.clientId.toString() !== session.user.clientId
+    automation.clientId !== session.user.clientId
   ) {
     notFound();
   }
 
   const automationData = {
-    _id: automation._id.toString(),
+    _id: automation.id,
     name: automation.name,
     description: automation.description,
     settings: automation.settings || {},

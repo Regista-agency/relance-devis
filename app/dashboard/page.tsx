@@ -1,7 +1,5 @@
 import { auth } from '@/lib/auth';
-import dbConnect from '@/lib/db';
-import Automation from '@/lib/models/Automation';
-import Metric from '@/lib/models/Metric';
+import prisma from '@/lib/prisma';
 import { AutomationCard } from '@/components/AutomationCard';
 import { KPICard } from '@/components/KPICard';
 import { Activity, Mail, TrendingUp, DollarSign } from 'lucide-react';
@@ -9,25 +7,27 @@ import { formatCurrency, formatNumber } from '@/lib/utils';
 
 export default async function DashboardPage() {
   const session = await auth();
-  await dbConnect();
 
   const query =
     session?.user.role === 'admin'
       ? {}
-      : { clientId: session?.user.clientId };
+      : { clientId: session?.user.clientId! };
 
-  const automations = await Automation.find(query)
-    .sort({ createdAt: -1 })
-    .lean();
+  const automations = await prisma.automation.findMany({
+    where: query,
+    orderBy: { createdAt: 'desc' },
+  });
 
   // Calculate global stats (last 7 days)
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const allMetrics = await Metric.find({
-    automationId: { $in: automations.map((a) => a._id) },
-    date: { $gte: sevenDaysAgo },
-  }).lean();
+  const allMetrics = await prisma.metric.findMany({
+    where: {
+      automationId: { in: automations.map((a) => a.id) },
+      date: { gte: sevenDaysAgo },
+    },
+  });
 
   const totalEmailsSent = allMetrics.reduce((sum, m) => sum + m.emailsSent, 0);
   const totalConversions = allMetrics.reduce((sum, m) => sum + m.conversions, 0);
@@ -35,15 +35,17 @@ export default async function DashboardPage() {
 
   const automationsWithStats = await Promise.all(
     automations.map(async (automation) => {
-      const metrics = await Metric.find({
-        automationId: automation._id,
-        date: { $gte: sevenDaysAgo },
-      }).lean();
+      const metrics = await prisma.metric.findMany({
+        where: {
+          automationId: automation.id,
+          date: { gte: sevenDaysAgo },
+        },
+      });
 
       const emailsSent = metrics.reduce((sum, m) => sum + m.emailsSent, 0);
 
       return {
-        _id: automation._id.toString(),
+        _id: automation.id,
         name: automation.name,
         description: automation.description,
         status: automation.status,

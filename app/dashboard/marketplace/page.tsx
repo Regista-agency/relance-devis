@@ -1,8 +1,6 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import dbConnect from '@/lib/db';
-import AutomationTemplate from '@/lib/models/AutomationTemplate';
-import Automation from '@/lib/models/Automation';
+import prisma from '@/lib/prisma';
 import { MarketplaceCard } from '@/components/MarketplaceCard';
 import { ShoppingBag } from 'lucide-react';
 
@@ -13,31 +11,34 @@ export default async function MarketplacePage() {
     redirect('/login');
   }
 
-  await dbConnect();
-
   // Get all active templates
-  const templates = await AutomationTemplate.find({ active: true })
-    .sort({ category: 1, name: 1 })
-    .lean();
+  const templates = await prisma.automationTemplate.findMany({
+    where: { active: true },
+    orderBy: [
+      { category: 'asc' },
+      { name: 'asc' },
+    ],
+  });
 
   // Get user's automations to check which are already added
-  const userAutomations = await Automation.find({
-    clientId: session.user.clientId,
-  }).lean();
+  const userAutomations = await prisma.automation.findMany({
+    where: { clientId: session.user.clientId! },
+    select: { templateId: true },
+  });
 
   const userTemplateIds = new Set(
     userAutomations
       .filter(a => a.templateId)
-      .map(a => a.templateId!.toString())
+      .map(a => a.templateId!)
   );
 
   const templatesData = templates.map(t => ({
-    _id: t._id.toString(),
+    _id: t.id,
     name: t.name,
     description: t.description,
     category: t.category,
     icon: t.icon,
-    isAdded: userTemplateIds.has(t._id.toString()),
+    isAdded: userTemplateIds.has(t.id),
   }));
 
   // Group by category
