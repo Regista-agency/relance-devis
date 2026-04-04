@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import dbConnect from '@/lib/db';
-import Automation from '@/lib/models/Automation';
+import prisma from '@/lib/prisma';
 
 export async function PUT(
   request: NextRequest,
@@ -17,9 +16,9 @@ export async function PUT(
 
     const { settings } = await request.json();
 
-    await dbConnect();
-
-    const automation = await Automation.findById(id);
+    const automation = await prisma.automation.findUnique({
+      where: { id },
+    });
 
     if (!automation) {
       return NextResponse.json(
@@ -31,14 +30,16 @@ export async function PUT(
     // Check authorization
     if (
       session.user.role !== 'admin' &&
-      automation.clientId.toString() !== session.user.clientId
+      automation.clientId !== session.user.clientId
     ) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
     }
 
     // Update settings
-    automation.settings = settings;
-    await automation.save();
+    await prisma.automation.update({
+      where: { id },
+      data: { settings },
+    });
 
     return NextResponse.json({
       message: 'Paramètres mis à jour avec succès',

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import dbConnect from '@/lib/db';
-import User from '@/lib/models/User';
+import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
 export async function PUT(request: NextRequest) {
@@ -28,9 +27,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    await dbConnect();
-
-    const user = await User.findOne({ email: session.user.email });
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
 
     if (!user) {
       return NextResponse.json(
@@ -51,8 +50,11 @@ export async function PUT(request: NextRequest) {
 
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-    await user.save();
+    
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword },
+    });
 
     return NextResponse.json({
       message: 'Mot de passe modifié avec succès',

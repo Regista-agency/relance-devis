@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import dbConnect from '@/lib/db';
-import User from '@/lib/models/User';
-import Client from '@/lib/models/Client';
+import prisma from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,10 +13,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await dbConnect();
-
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
     if (existingUser) {
       return NextResponse.json(
         { error: 'Cet email est déjà utilisé' },
@@ -29,21 +28,25 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create client
-    const client = await Client.create({
-      name: email.split('@')[0],
+    // Create client first
+    const client = await prisma.client.create({
+      data: {
+        name: email.split('@')[0],
+      },
     });
 
     // Create user
-    const user = await User.create({
-      email,
-      password: hashedPassword,
-      role: 'client',
-      clientId: client._id,
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        role: 'client',
+        clientId: client.id,
+      },
     });
 
     return NextResponse.json(
-      { message: 'Compte créé avec succès', userId: user._id },
+      { message: 'Compte créé avec succès', userId: user.id },
       { status: 201 }
     );
   } catch (error) {

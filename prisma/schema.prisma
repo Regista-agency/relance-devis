@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  
+  users       User[]
+  automations Automation[]
+  
+  @@map("clients")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      String   @default("client") // "client" or "admin"
+  clientId  String?
+  createdAt DateTime @default(now())
+  
+  client Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  @@map("users")
+}
+
+model AutomationTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  description     String
+  category        String   // email, facturation, crm, maintenance, leads
+  icon            String   @default("activity")
+  defaultSettings Json     @default("{}")
+  settingsSchema  Json     @default("{}")
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  
+  automations Automation[]
+  
+  @@map("automation_templates")
+}
+
+model Automation {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  clientId    String
+  templateId  String?
+  status      String   @default("active") // active or inactive
+  settings    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  
+  client   Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  template AutomationTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  metrics  Metric[]
+  
+  @@map("automations")
+}
+
+model Metric {
+  id           String   @id @default(cuid())
+  automationId String
+  date         DateTime
+  emailsSent   Int      @default(0)
+  conversions  Int      @default(0)
+  revenue      Float    @default(0)
+  
+  automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  
+  @@index([automationId, date])
+  @@map("metrics")
+}

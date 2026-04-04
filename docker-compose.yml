@@ -1,24 +1,23 @@
 version: '3.8'
 
 services:
-  # MongoDB Database
-  mongodb:
-    image: mongo:7.0
-    container_name: regista-mongodb
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: regista-postgres
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin123
-      MONGO_INITDB_DATABASE: regista-agency
+      POSTGRES_USER: regista
+      POSTGRES_PASSWORD: regista123
+      POSTGRES_DB: regista_agency
     ports:
-      - '27017:27017'
+      - '5432:5432'
     volumes:
-      - mongodb_data:/data/db
-      - mongodb_config:/data/configdb
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - regista-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: ["CMD-SHELL", "pg_isready -U regista -d regista_agency"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -33,7 +32,7 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=development
-      - MONGODB_URI=mongodb://admin:admin123@mongodb:27017/regista-agency?authSource=admin
+      - DATABASE_URL=postgresql://regista:regista123@postgres:5432/regista_agency
       - NEXTAUTH_SECRET=regista-secret-key-change-in-production-min-32-chars
       - NEXTAUTH_URL=http://localhost:3000
       - NEXT_PUBLIC_APP_NAME=Regista Agency
@@ -45,33 +44,30 @@ services:
       - /app/node_modules
       - /app/.next
     depends_on:
-      mongodb:
+      postgres:
         condition: service_healthy
     networks:
       - regista-network
-    command: npm run dev
+    command: sh -c "npx prisma migrate deploy && npm run dev"
 
-  # MongoDB Express (Optional - Web UI for MongoDB)
-  mongo-express:
-    image: mongo-express:latest
-    container_name: regista-mongo-express
+  # pgAdmin (Optional - Web UI for PostgreSQL)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: regista-pgadmin
     restart: unless-stopped
     environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
-      ME_CONFIG_MONGODB_ADMINPASSWORD: admin123
-      ME_CONFIG_MONGODB_URL: mongodb://admin:admin123@mongodb:27017/
-      ME_CONFIG_BASICAUTH: false
+      PGADMIN_DEFAULT_EMAIL: admin@regista-agency.fr
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
-      - '8081:8081'
+      - '5050:80'
     depends_on:
-      - mongodb
+      - postgres
     networks:
       - regista-network
 
 volumes:
-  mongodb_data:
-    driver: local
-  mongodb_config:
+  postgres_data:
     driver: local
 
 networks:

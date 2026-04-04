@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import dbConnect from '@/lib/db';
-import Automation from '@/lib/models/Automation';
-import AutomationTemplate from '@/lib/models/AutomationTemplate';
+import prisma from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,10 +19,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await dbConnect();
-
     // Get template
-    const template = await AutomationTemplate.findById(templateId);
+    const template = await prisma.automationTemplate.findUnique({
+      where: { id: templateId },
+    });
+
     if (!template) {
       return NextResponse.json(
         { error: 'Template non trouvé' },
@@ -33,9 +32,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if already added
-    const existing = await Automation.findOne({
-      clientId: session.user.clientId,
-      templateId: template._id,
+    const existing = await prisma.automation.findFirst({
+      where: {
+        clientId: session.user.clientId!,
+        templateId: template.id,
+      },
     });
 
     if (existing) {
@@ -46,18 +47,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Create automation from template
-    const automation = await Automation.create({
-      name: template.name,
-      description: template.description,
-      clientId: session.user.clientId,
-      templateId: template._id,
-      status: 'inactive',
-      settings: template.defaultSettings,
+    const automation = await prisma.automation.create({
+      data: {
+        name: template.name,
+        description: template.description,
+        clientId: session.user.clientId!,
+        templateId: template.id,
+        status: 'inactive',
+        settings: template.defaultSettings,
+      },
     });
 
     return NextResponse.json({
       message: 'Automatisation ajoutée avec succès',
-      automationId: automation._id,
+      automationId: automation.id,
     });
   } catch (error) {
     console.error('Add automation error:', error);

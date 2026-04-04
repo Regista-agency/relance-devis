@@ -1,8 +1,7 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
-import dbConnect from '@/lib/db';
-import User from '@/lib/models/User';
+import prisma from '@/lib/prisma';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -17,8 +16,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         try {
-          await dbConnect();
-          const user = await User.findOne({ email: credentials.email });
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email as string },
+          });
 
           if (!user) {
             return null;
@@ -34,10 +34,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
 
           return {
-            id: user._id.toString(),
+            id: user.id,
             email: user.email,
             role: user.role,
-            clientId: user.clientId?.toString(),
+            clientId: user.clientId,
           };
         } catch (error) {
           console.error('Auth error:', error);
